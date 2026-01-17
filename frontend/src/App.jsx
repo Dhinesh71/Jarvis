@@ -154,7 +154,11 @@ function App() {
       };
 
       if (data.image) {
-        assistantMsg.image = data.image;
+        assistantMsg.image = data.image; // Can be static image or video preview
+      }
+
+      if (data.video) {
+        assistantMsg.video = data.video; // Attach video data
       }
 
       setHistory(prev => [...prev, assistantMsg]);

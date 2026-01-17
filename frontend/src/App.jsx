@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ChatWindow from './components/ChatWindow';
 import ChatInput from './components/ChatInput';
+import AICore from './components/AICore'; // Import AICore
 import './App.css';
 
 const SYSTEM_PROMPT = {
@@ -9,9 +10,9 @@ const SYSTEM_PROMPT = {
 
 Personality:
 - Calm
-- Intelligent
+- Intelligent (High IQ)
 - Observant
-- Professional and natural
+- Professional but slightly witty
 - No emojis unless explicitly asked
 
 Conversation Rules:
@@ -45,8 +46,7 @@ function App() {
     setIsThinking(true);
 
     try {
-      // Capture current history for backend context (before the new message is fully committed to backend logic)
-      // We use the 'history' state variable which holds the state at the beginning of this render cycle/function call
+      // Capture current history for backend context
       let historyToSend = history;
       if (history.length > 15) {
         historyToSend = [history[0], ...history.slice(history.length - 14)];
@@ -76,7 +76,7 @@ function App() {
 
     } catch (error) {
       console.error('Error sending message:', error);
-      const errorMsg = { role: 'assistant', content: 'I apologize, but I am unable to connect to the server at the moment.' };
+      const errorMsg = { role: 'assistant', content: 'I apologize, but I am unable to connect to the server at the moment. Please check the neural link.' };
       setHistory(prev => [...prev, errorMsg]);
     } finally {
       setIsThinking(false);
@@ -87,14 +87,23 @@ function App() {
     <>
       <div className="scanlines"></div>
       <div className="grid-background"></div>
+      <div className="ambient-light"></div>
+
       <div className="app-container">
         <header className="app-header">
           <h1>JARVIS</h1>
           <div className="status-indicator">Online</div>
         </header>
+
+        {/* AI Core Background Visualization */}
+        <AICore isThinking={isThinking} />
+
         <main className="chat-interface">
           <ChatWindow history={history} isThinking={isThinking} />
-          <ChatInput onSendMessage={handleSendMessage} isThinking={isThinking} />
+
+          <div className="chat-input-wrapper">
+            <ChatInput onSendMessage={handleSendMessage} isThinking={isThinking} />
+          </div>
         </main>
       </div>
     </>

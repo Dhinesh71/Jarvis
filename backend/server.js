@@ -7,17 +7,15 @@ const { generateImage } = require('./utils/imageGenerator');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { processUploadedFile } = require('./utils/fileProcessor');
 
-// Ensure uploads directory exists
-const uploadDir = 'uploads';
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
+// Use system temp directory for uploads (works on Vercel & Local)
+const uploadDir = os.tmpdir();
 
 const upload = multer({
   dest: uploadDir,
-  limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit matching express config
 });
 
 const app = express();

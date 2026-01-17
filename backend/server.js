@@ -23,7 +23,7 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 const corsOptions = {
-  origin: true, 
+  origin: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   credentials: true
@@ -167,33 +167,63 @@ Role: Full Stack Developer building JARVIS.`;
     let webContext = "Live Web Search was not performed.";
     let imageResult = null;
 
-    // --- 4a. IMAGE GENERATION (Highest Priority if active) ---
+    // --- 4. PARALLEL EXECUTION: IMAGE GEN & WEB SEARCH ---
+    const tasks = [];
+
+    // Task 1: Image Generation
     if (needsImageGen) {
       console.log("Triggering Image Generation...");
-      const genResult = await generateImage(optimizedQuery || message);
-
-      if (genResult && genResult.success) {
-        imageResult = genResult.image;
-        // We return early or inject this into the response. 
-        // Better to let the LLM know it generated an image so it can present it.
-        webContext += `\n[SYSTEM: An image was successfully generated based on the user's request. The image data is attached to the response.]`;
-      } else {
-        webContext += `\n[SYSTEM: Image generation failed. Apologize to the user.]`;
-      }
+      tasks.push(
+        generateImage(optimizedQuery || message)
+          .then(res => ({ type: 'image', data: res }))
+          .catch(err => ({ type: 'image', error: err }))
+      );
     }
 
-    // --- 4b. EXECUTE WEB SEARCH (Only if needed and not simple image gen) ---
-    if (needsSearch && !imageResult && optimizedQuery) {
-      const searchResults = await searchWeb(optimizedQuery);
-
-      if (searchResults && searchResults.length > 0) {
-        webContext = searchResults.map((r, i) =>
-          `Result ${i + 1}:\nTitle: ${r.title}\nSnippet: ${r.snippet}\nSource: ${r.url}`
-        ).join('\n\n');
-      } else {
-        webContext = "Search performed but found no relevant results.";
-      }
+    // Task 2: Web Search
+    // Note: We run search even if image is generated to provide full context
+    if (needsSearch && optimizedQuery) {
+      console.log("Triggering Web Search...");
+      tasks.push(
+        searchWeb(optimizedQuery)
+          .then(res => ({ type: 'search', data: res }))
+          .catch(err => ({ type: 'search', error: err }))
+      );
     }
+
+    const results = await Promise.all(tasks);
+
+    // Process Results
+    results.forEach(result => {
+      if (result.type === 'image') {
+        if (result.data && result.data.success) {
+          imageResult = result.data.image;
+          webContext += `\n[SYSTEM: An image was successfully generated. The image data is attached to the response.]`;
+        } else {
+          webContext += `\n[SYSTEM: Image generation failed.]`;
+        }
+      }
+
+      if (result.type === 'search') {
+        if (result.data && result.data.length > 0) {
+          const searchSummary = result.data.map((r, i) =>
+            `Result ${i + 1}:\nTitle: ${r.title}\nSnippet: ${r.snippet}\nSource: ${r.url}`
+          ).join('\n\n');
+          // If we have previous context (e.g. from image failure), append clearly
+          if (webContext === "Live Web Search was not performed.") {
+            webContext = searchSummary;
+          } else {
+            webContext += `\n\nWEB SEARCH RESULTS:\n${searchSummary}`;
+          }
+        } else {
+          if (webContext === "Live Web Search was not performed.") {
+            webContext = "Search performed but found no relevant results.";
+          } else {
+            webContext += "\n\n[System: Search returned no results.]";
+          }
+        }
+      }
+    });
 
     // --- 5. STRUCTURED INPUT CONSTRUCTION ---
     const structuredInput = `

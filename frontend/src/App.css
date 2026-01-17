@@ -385,8 +385,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0; /* Prevent shrinking */
-  white-space: nowrap; /* Keep text on one line */
+  flex-shrink: 0;
+  /* Prevent shrinking */
+  white-space: nowrap;
+  /* Keep text on one line */
 }
 
 .send-button:hover:not(:disabled) {
@@ -443,6 +445,54 @@ body {
 
   .send-button {
     padding: 0 1rem;
+  }
+}
+
+/* Deep Mobile Optimization (Small Screens < 360px) */
+@media (max-width: 360px) {
+  .app-header {
+    padding: 0.8rem 1rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.4rem;
+  }
+
+  .app-header h1::after {
+    font-size: 0.7rem;
+    right: -2rem;
+  }
+
+  .chat-window {
+    padding: 1.5rem 1rem 180px 1rem;
+  }
+
+  .chat-input-wrapper {
+    bottom: 0.5rem;
+    width: 98%;
+  }
+
+  .chat-input-container {
+    padding: 0.3rem;
+    border-radius: 12px;
+  }
+
+  .chat-input {
+    font-size: 0.9rem;
+    padding: 0.8rem;
+  }
+
+  .send-button {
+    padding: 0 0.8rem;
+    font-size: 0.8rem;
+    min-width: 60px;
+    border-radius: 8px;
+  }
+
+  .message-bubble {
+    max-width: 92%;
+    padding: 1rem 1.2rem;
+    font-size: 1rem;
   }
 }
 

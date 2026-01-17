@@ -100,11 +100,15 @@ const AICore = ({ isThinking = false }) => {
 
                 .core-status {
                     position: absolute;
-                    bottom: -60px;
+                    bottom: -40px;
+                    left: 0;
+                    width: 100%;
+                    text-align: center;
+                    white-space: nowrap;
                     font-family: 'Orbitron', sans-serif;
                     font-size: 0.9rem;
-                    letter-spacing: 0.2em;
-                    color: rgba(0, 243, 255, 0.8);
+                    letter-spacing: 0.3em;
+                    color: rgba(0, 243, 255, 0.9);
                     text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
                 }
 

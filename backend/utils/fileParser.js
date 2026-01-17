@@ -1,8 +1,4 @@
 const fs = require('fs');
-const pdf = require('pdf-parse');
-const mammoth = require('mammoth');
-const xlsx = require('xlsx');
-const csv = require('csv-parser');
 
 async function parseFile(file) {
     const { path: filePath, mimetype, originalname, buffer } = file;
@@ -16,17 +12,19 @@ async function parseFile(file) {
         };
 
         if (mimetype === 'application/pdf') {
+            const pdf = require('pdf-parse'); // Lazy load
             const dataBuffer = getBuffer();
             const data = await pdf(dataBuffer);
             return { type: 'pdf', content: data.text, metadata: data.info };
         }
         else if (mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') { // docx
-            // Mammoth supports buffer
+            const mammoth = require('mammoth'); // Lazy load
             const dataBuffer = getBuffer();
             const result = await mammoth.extractRawText({ buffer: dataBuffer });
             return { type: 'docx', content: result.value };
         }
         else if (mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || mimetype === 'application/vnd.ms-excel') { // xlsx
+            const xlsx = require('xlsx'); // Lazy load
             const dataBuffer = getBuffer();
             const workbook = xlsx.read(dataBuffer, { type: 'buffer' });
             const sheetName = workbook.SheetNames[0];
@@ -35,10 +33,10 @@ async function parseFile(file) {
             return { type: 'excel', content: JSON.stringify(data, null, 2) };
         }
         else if (mimetype === 'text/csv' || mimetype === 'application/csv') {
+            const csv = require('csv-parser'); // Lazy load
             return new Promise((resolve, reject) => {
                 const results = [];
                 const dataBuffer = getBuffer();
-                // Create stream from buffer
                 const stream = require('stream');
                 const bufferStream = new stream.PassThrough();
                 bufferStream.end(dataBuffer);

@@ -56,7 +56,7 @@ app.post('/chat', async (req, res) => {
       { role: 'user', content: enrichedMessage }
     ];
 
-    // 3. Call Groq Chat API
+    // 4. Call Groq Chat API
     const groqResponse = await axios.post(
       'https://api.groq.com/openai/v1/chat/completions',
       {
@@ -76,10 +76,12 @@ app.post('/chat', async (req, res) => {
     const assistantContent = groqResponse.data.choices[0].message.content;
     const assistantMessage = { role: 'assistant', content: assistantContent };
 
-    // 4. Append assistant reply
-    const updatedHistory = [...messagesForAI, assistantMessage];
+    // 5. Append clean messages to history (original message, not enriched)
+    // We send back the clean user message so the UI doesn't show the internal prompt
+    const cleanUserMessage = { role: 'user', content: message };
+    const updatedHistory = [...previousHistory, cleanUserMessage, assistantMessage];
 
-    // 5. Return updated history + response
+    // 6. Return updated history + response
     res.json({
       response: assistantContent,
       history: updatedHistory

@@ -124,3 +124,49 @@
 .message-bubble.user {
   padding-top: 35px;
 }
+
+/* --- Image Generation Styles --- */
+.message-image-container {
+  margin-top: 15px;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(0, 243, 255, 0.3);
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+}
+
+.message-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-height: 400px;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.message-image:hover {
+  transform: scale(1.02);
+}
+
+.download-image-btn {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  background: rgba(189, 0, 255, 0.15);
+  color: #bd00ff;
+  border: none;
+  border-top: 1px solid rgba(189, 0, 255, 0.3);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.download-image-btn:hover {
+  background: rgba(189, 0, 255, 0.3);
+  color: #e0faff;
+  box-shadow: 0 0 10px rgba(189, 0, 255, 0.4);
+}

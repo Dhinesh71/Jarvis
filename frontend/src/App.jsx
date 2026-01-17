@@ -86,8 +86,6 @@ function App() {
     }
 
     // Optimistic Update: Show user message immediately
-    // If files are attached, we can mention it in the UI or just show key details. 
-    // Ideally we should show a file bubble, but for now we append text indication.
     let displayMessage = message;
     if (files.length > 0) {
       displayMessage += `\n[Attached: ${files.map(f => f.name).join(', ')}]`;
@@ -99,10 +97,20 @@ function App() {
 
     try {
       // Capture current history for backend context
-      let historyToSend = history;
-      if (history.length > 15) {
-        historyToSend = [history[0], ...history.slice(history.length - 14)];
+      // CRITICAL FIX: Sanitize history to strip 'image' fields (base64) 
+      // This prevents "Payload Too Large" errors and saves bandwidth.
+      let fullHistory = [...history, newUserMsg];
+
+      let historyToSend = fullHistory;
+      if (fullHistory.length > 15) {
+        historyToSend = [fullHistory[0], ...fullHistory.slice(fullHistory.length - 14)];
       }
+
+      // Strip images from the history sent to backend
+      const sanitizedHistory = historyToSend.map(msg => {
+        const { image, ...rest } = msg;
+        return rest;
+      });
 
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/chat';
 
@@ -112,16 +120,15 @@ function App() {
       if (files.length > 0) {
         const formData = new FormData();
         formData.append('message', message);
-        formData.append('history', JSON.stringify(historyToSend));
+        formData.append('history', JSON.stringify(sanitizedHistory));
         files.forEach(file => {
           formData.append('files', file);
         });
         body = formData;
-        // Do NOT set Content-Type header for FormData, browser does it with boundary
       } else {
         body = JSON.stringify({
           message: message,
-          history: historyToSend,
+          history: sanitizedHistory,
         });
         headers['Content-Type'] = 'application/json';
       }
@@ -138,8 +145,19 @@ function App() {
 
       const data = await response.json();
 
-      // Update history with the full history returned from backend
-      setHistory(data.history);
+      // Update history using the response
+      // We do NOT use data.history from backend because it is stripped of images.
+      // We append the new assistant message to our local enriched history.
+      const assistantMsg = {
+        role: 'assistant',
+        content: data.response
+      };
+
+      if (data.image) {
+        assistantMsg.image = data.image;
+      }
+
+      setHistory(prev => [...prev, assistantMsg]);
 
     } catch (error) {
       console.error('Error sending message:', error);

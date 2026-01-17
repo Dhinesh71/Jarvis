@@ -12,10 +12,14 @@ function MessageBubble({ message, voiceMode, onEdit, messageIndex }) {
         speakText(message.content, lang);
     };
 
-    const handleEdit = () => {
-        if (onEdit) {
-            onEdit(messageIndex, message.content);
-        }
+    const handleDownload = () => {
+        if (!message.image) return;
+        const link = document.createElement("a");
+        link.href = message.image;
+        link.download = `jarvis_generated_${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     return (
@@ -25,6 +29,18 @@ function MessageBubble({ message, voiceMode, onEdit, messageIndex }) {
             </div>
             <div className="message-content">
                 {message.content}
+                {message.image && (
+                    <div className="message-image-container">
+                        <img src={message.image} alt="Generated Content" className="message-image" />
+                        <button
+                            className="download-image-btn"
+                            onClick={handleDownload}
+                            title="Download Image"
+                        >
+                            ⬇️ Download
+                        </button>
+                    </div>
+                )}
             </div>
 
             {isAI && (
@@ -40,7 +56,7 @@ function MessageBubble({ message, voiceMode, onEdit, messageIndex }) {
             {isUser && (
                 <button
                     className="edit-btn"
-                    onClick={handleEdit}
+                    onClick={() => onEdit(messageIndex, message.content)}
                     title="Edit message"
                 >
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

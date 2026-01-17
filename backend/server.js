@@ -3,6 +3,7 @@ const cors = require('cors');
 const axios = require('axios');
 require('dotenv').config();
 const { searchWeb } = require('./utils/search');
+const { generateImage } = require('./utils/imageGenerator');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
@@ -24,7 +25,8 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // API Key Check
 if (!process.env.GROQ_API_KEY) {
@@ -49,12 +51,14 @@ async function analyzeIntent(userMessage, history) {
     1. Analyze the User's message and Context.
     2. Determine if the user is asking for information that requires a LIVE WEB SEARCH (e.g., "latest news", "weather", "stock price", "release date", "who is...", "recent events").
     3. General coding questions, greetings, logic puzzles, or creative writing DO NOT require search.
-    4. If search is needed, generate an optimized search query.
+    4. If the user asks to "generate", "create", "draw", "visualize" an IMAGE, set "needsImageGen": true.
+    5. If search is needed, generate an optimized search query.
 
     Output a STRICT JSON object only:
     {
       "needsSearch": boolean,
-      "query": "the_optimized_search_query_string_or_null"
+      "needsImageGen": boolean,
+      "query": "the_optimized_search_query_or_image_prompt"
     }
 
     Context:
@@ -93,15 +97,15 @@ async function analyzeIntent(userMessage, history) {
     } catch (e) {
       // Fallback if JSON parsing fails but looks like a string
       console.warn("JSON Parse failed, attempting fallback logic.");
-      return { needsSearch: true, query: userMessage };
+      return { needsSearch: false, needsImageGen: false, query: userMessage };
     }
 
-    console.log(`Intent Analysis: Needs Search? ${result.needsSearch} | Query: "${result.query}"`);
+    console.log(`Intent Analysis: Search? ${result.needsSearch} | Image? ${result.needsImageGen}`);
     return result;
 
   } catch (error) {
     console.error('Intent Analysis Failed:', error.message);
-    return { needsSearch: true, query: userMessage }; // Safe fallback
+    return { needsSearch: false, needsImageGen: false, query: userMessage }; // Safe fallback
   }
 }
 
@@ -153,13 +157,29 @@ Role: Full Stack Developer building JARVIS.`;
       : "No recent history.";
 
     // --- 3. ANALYZE INTENT & SEARCH (Conditional) ---
-    const { needsSearch, query: searchQuery } = await analyzeIntent(message, history);
+    const { needsSearch, needsImageGen, query: optimizedQuery } = await analyzeIntent(message, history);
 
-    let webContext = "Live Web Search was not performed (deemed unnecessary/internal knowledge sufficient).";
+    let webContext = "Live Web Search was not performed.";
+    let imageResult = null;
 
-    // --- 4. EXECUTE WEB SEARCH (Only if needed) ---
-    if (needsSearch && searchQuery) {
-      const searchResults = await searchWeb(searchQuery);
+    // --- 4a. IMAGE GENERATION (Highest Priority if active) ---
+    if (needsImageGen) {
+      console.log("Triggering Image Generation...");
+      const genResult = await generateImage(optimizedQuery || message);
+
+      if (genResult && genResult.success) {
+        imageResult = genResult.image;
+        // We return early or inject this into the response. 
+        // Better to let the LLM know it generated an image so it can present it.
+        webContext += `\n[SYSTEM: An image was successfully generated based on the user's request. The image data is attached to the response.]`;
+      } else {
+        webContext += `\n[SYSTEM: Image generation failed. Apologize to the user.]`;
+      }
+    }
+
+    // --- 4b. EXECUTE WEB SEARCH (Only if needed and not simple image gen) ---
+    if (needsSearch && !imageResult && optimizedQuery) {
+      const searchResults = await searchWeb(optimizedQuery);
 
       if (searchResults && searchResults.length > 0) {
         webContext = searchResults.map((r, i) =>
@@ -238,15 +258,18 @@ Follow the response strategy and style strictly.`
     const assistantContent = groqResponse.data.choices[0].message.content;
     const assistantMessage = { role: 'assistant', content: assistantContent };
 
-    console.log(`\n=== JARVIS GENERATION ===\nQuery: ${searchQuery}\nResponse: ${assistantContent}\n=========================\n`);
 
-    // Return plain response + history
+
+    console.log(`\n=== JARVIS GENERATION ===\nResponse: ${assistantContent}\n=========================\n`);
+
+    // Return plain response + history + image if available
     const cleanUserMessage = { role: 'user', content: message };
     const updatedHistory = [...(Array.isArray(history) ? history : []), cleanUserMessage, assistantMessage];
 
     res.json({
       response: assistantContent,
-      history: updatedHistory
+      history: updatedHistory,
+      image: imageResult // Send image data to frontend
     });
 
   } catch (error) {

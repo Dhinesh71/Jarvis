@@ -102,7 +102,7 @@ async function analyzeIntent(userMessage, history) {
     } catch (e) {
       // Fallback if JSON parsing fails but looks like a string
       console.warn("JSON Parse failed, attempting fallback logic.");
-      return { needsSearch: false, needsImageGen: false, query: userMessage };
+      return { needsSearch: false, needsImageGen: false, needsVideoGen: false, query: userMessage };
     }
 
     console.log(`Intent Analysis: Search? ${result.needsSearch} | Image? ${result.needsImageGen}`);
@@ -110,7 +110,7 @@ async function analyzeIntent(userMessage, history) {
 
   } catch (error) {
     console.error('Intent Analysis Failed:', error.message);
-    return { needsSearch: false, needsImageGen: false, query: userMessage }; // Safe fallback
+    return { needsSearch: false, needsImageGen: false, needsVideoGen: false, query: userMessage }; // Safe fallback
   }
 }
 
@@ -162,7 +162,7 @@ Role: Full Stack Developer building JARVIS.`;
       : "No recent history.";
 
     // --- 3. ANALYZE INTENT & SEARCH (Conditional) ---
-    const { needsSearch, needsImageGen, query: optimizedQuery } = await analyzeIntent(message, history);
+    const { needsSearch, needsImageGen, needsVideoGen, query: optimizedQuery } = await analyzeIntent(message, history);
 
     let webContext = "Live Web Search was not performed.";
     let imageResult = null;
@@ -171,15 +171,15 @@ Role: Full Stack Developer building JARVIS.`;
     const tasks = [];
 
     // Task 1: Image Generation (& Optional Video)
-    if (needsImageGen || result.needsVideoGen) {
-      console.log(`Triggering ${result.needsVideoGen ? 'Video' : 'Image'} Generation...`);
+    if (needsImageGen || needsVideoGen) {
+      console.log(`Triggering ${needsVideoGen ? 'Video' : 'Image'} Generation...`);
 
       const imageTask = generateImage(optimizedQuery || message)
         .then(async (res) => {
           if (!res.success) return { type: 'image', data: res };
 
           // If Video is requested, chain execution: Image -> Video
-          if (result.needsVideoGen) {
+          if (needsVideoGen) {
             const { generateVideoFromImage } = require('./utils/videoGenerator');
             console.log("Image ready. Converting to Video (this may take 60s)...");
             const videoRes = await generateVideoFromImage(res.image);

@@ -21,36 +21,44 @@ app.get('/', (req, res) => {
   res.send('JARVIS Backend System Online.');
 });
 
-// Query Rewriting Function (Step 1)
-async function rewriteQuery(userMessage, history) {
+// Intent Analysis & Query Optimization (Step 1)
+async function analyzeIntent(userMessage, history) {
   try {
     const contextLines = Array.isArray(history)
       ? history.slice(-3).map(msg => `${msg.role}: ${msg.content}`).join('\n')
       : '';
 
     const prompt = `
-    You are a Search Query Optimizer.
-    Your task: Rewrite the user's last message into a clean, effective web search query.
-    1. Resolve ambiguous pronouns (e.g., "it", "he", "this") using the Context.
-    2. Make the query specific (add names, titles, topics).
-    3. Remove unnecessary pleasantries.
-    4. Return ONLY the raw search query string. No quotes, no markdown.
+    You are an intelligent Intent Classifier and query optimizer.
+    Your Job:
+    1. Analyze the User's message and Context.
+    2. Determine if the user is asking for information that requires a LIVE WEB SEARCH (e.g., "latest news", "weather", "stock price", "release date", "who is...", "recent events").
+    3. General coding questions, greetings, logic puzzles, or creative writing DO NOT require search.
+    4. If search is needed, generate an optimized search query.
+
+    Output a STRICT JSON object only:
+    {
+      "needsSearch": boolean,
+      "query": "the_optimized_search_query_string_or_null"
+    }
 
     Context:
     ${contextLines}
 
-    User: ${userMessage}
-    
-    Search Query:
+    User Message: ${userMessage}
     `;
 
     const response = await axios.post(
       'https://api.groq.com/openai/v1/chat/completions',
       {
         model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          { role: 'system', content: 'You represent output in JSON format only.' },
+          { role: 'user', content: prompt }
+        ],
         temperature: 0.1,
-        max_tokens: 30
+        max_tokens: 100,
+        response_format: { type: "json_object" }
       },
       {
         headers: {
@@ -60,13 +68,25 @@ async function rewriteQuery(userMessage, history) {
       }
     );
 
-    const rewritten = response.data.choices[0].message.content.trim().replace(/^"|"$/g, '');
-    console.log(`Query Rewritten: "${userMessage}" -> "${rewritten}"`);
-    return rewritten;
+    let result = response.data.choices[0].message.content;
+
+    // Parse JSON safely
+    try {
+      if (typeof result === 'string') {
+        result = JSON.parse(result);
+      }
+    } catch (e) {
+      // Fallback if JSON parsing fails but looks like a string
+      console.warn("JSON Parse failed, attempting fallback logic.");
+      return { needsSearch: true, query: userMessage };
+    }
+
+    console.log(`Intent Analysis: Needs Search? ${result.needsSearch} | Query: "${result.query}"`);
+    return result;
 
   } catch (error) {
-    console.error('Query Rewriting Failed:', error.message);
-    return userMessage; // Fallback to raw query
+    console.error('Intent Analysis Failed:', error.message);
+    return { needsSearch: true, query: userMessage }; // Safe fallback
   }
 }
 
@@ -93,17 +113,22 @@ Role: Full Stack Developer building JARVIS.`;
       ? history.slice(-6).map(m => `${m.role === 'user' ? 'User' : 'JARVIS'}: ${m.content}`).join('\n')
       : "No recent history.";
 
-    // --- 3. REWRITE QUERY ---
-    const searchQuery = await rewriteQuery(message, history);
+    // --- 3. ANALYZE INTENT & SEARCH (Conditional) ---
+    const { needsSearch, query: searchQuery } = await analyzeIntent(message, history);
 
-    // --- 4. WEB SEARCH ---
-    const searchResults = await searchWeb(searchQuery);
+    let webContext = "Live Web Search was not performed (deemed unnecessary/internal knowledge sufficient).";
 
-    let webContext = "No relevant web search results found.";
-    if (searchResults && searchResults.length > 0) {
-      webContext = searchResults.map((r, i) =>
-        `Result ${i + 1}:\nTitle: ${r.title}\nSnippet: ${r.snippet}\nSource: ${r.url}`
-      ).join('\n\n');
+    // --- 4. EXECUTE WEB SEARCH (Only if needed) ---
+    if (needsSearch && searchQuery) {
+      const searchResults = await searchWeb(searchQuery);
+
+      if (searchResults && searchResults.length > 0) {
+        webContext = searchResults.map((r, i) =>
+          `Result ${i + 1}:\nTitle: ${r.title}\nSnippet: ${r.snippet}\nSource: ${r.url}`
+        ).join('\n\n');
+      } else {
+        webContext = "Search performed but found no relevant results.";
+      }
     }
 
     // --- 5. STRUCTURED INPUT CONSTRUCTION ---
@@ -134,6 +159,9 @@ You must combine all of them into ONE clear, confident response.
 
 Rules:
 - Never mention memory, search, Groq, or backend logic.
+- PRIVACY RULE: Do NOT mention the User's name (Dhinesh), role, or private details in general conversation.
+- EXCEPTION: If explicitly asked "Who created you?" or "Who made you?", you MUST answer: "I was created by Dhinesh."
+- NO ROBOTIC FILLER: Do NOT start with "Based on...", "According to...", "I can tell you...", "Here is the information". JUST SAY THE ANSWER.
 - Never explain missing data.
 - Never use weak or uncertain language.
 - Always infer intent from context.

@@ -7,15 +7,13 @@ const { generateImage } = require('./utils/imageGenerator');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const { processUploadedFile } = require('./utils/fileProcessor');
 
-// Use system temp directory for uploads (works on Vercel & Local)
-const uploadDir = os.tmpdir();
-
+// Use Memory Storage to avoid Vercel filesystem issues explicitly.
+// Files are held in RAM (Buffer) which is safer for Lambda functions.
 const upload = multer({
-  dest: uploadDir,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit matching express config
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
 const app = express();

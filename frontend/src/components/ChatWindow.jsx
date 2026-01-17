@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import MessageBubble from './MessageBubble';
 
-const ChatWindow = ({ history, isThinking }) => {
+const ChatWindow = ({ history, isThinking, onEdit }) => {
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -15,7 +15,12 @@ const ChatWindow = ({ history, isThinking }) => {
     return (
         <div className="chat-window">
             {history.filter(msg => msg.role !== 'system').map((msg, index) => (
-                <MessageBubble key={index} message={msg} />
+                <MessageBubble
+                    key={index}
+                    message={msg}
+                    messageIndex={index}
+                    onEdit={onEdit}
+                />
             ))}
 
             {isThinking && (

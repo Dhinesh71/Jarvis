@@ -25,6 +25,19 @@ Personality:
 function App() {
   const [history, setHistory] = useState([SYSTEM_PROMPT]);
   const [isThinking, setIsThinking] = useState(false);
+  const [editMessage, setEditMessage] = useState('');
+
+  const handleEdit = (messageIndex, messageContent) => {
+    // Account for filtered system messages
+    const actualIndex = messageIndex + 1; // +1 because we filter out system message in display
+
+    // Truncate history at the edited message point
+    const truncatedHistory = history.slice(0, actualIndex);
+    setHistory(truncatedHistory);
+
+    // Set the message in the input field
+    setEditMessage(messageContent);
+  };
 
   const handleSendMessage = async (message) => {
     // Optimistic Update: Show user message immediately
@@ -86,10 +99,15 @@ function App() {
         <AICore isThinking={isThinking} />
 
         <main className="chat-interface">
-          <ChatWindow history={history} isThinking={isThinking} />
+          <ChatWindow history={history} isThinking={isThinking} onEdit={handleEdit} />
 
           <div className="chat-input-wrapper">
-            <ChatInput onSendMessage={handleSendMessage} isThinking={isThinking} />
+            <ChatInput
+              onSendMessage={handleSendMessage}
+              isThinking={isThinking}
+              editMessage={editMessage}
+              onEditComplete={() => setEditMessage('')}
+            />
           </div>
         </main>
       </div>

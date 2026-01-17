@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { speechRecognizer } from '../utils/speechRecognition';
 
-const ChatInput = ({ onSendMessage, isThinking }) => {
+const ChatInput = ({ onSendMessage, isThinking, editMessage, onEditComplete }) => {
     const [message, setMessage] = useState('');
     const [isListening, setIsListening] = useState(false);
+
+    // Handle edit message
+    useEffect(() => {
+        if (editMessage) {
+            setMessage(editMessage);
+            if (onEditComplete) {
+                onEditComplete();
+            }
+        }
+    }, [editMessage, onEditComplete]);
 
     const toggleListening = () => {
         if (isListening) {

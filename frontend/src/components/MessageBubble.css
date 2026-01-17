@@ -90,3 +90,37 @@
   transform: scale(1.1);
   filter: drop-shadow(0 0 5px rgba(0, 243, 255, 0.8));
 }
+
+/* --- Edit Button (for user messages) --- */
+.edit-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 243, 255, 0.1);
+  border: 1px solid rgba(0, 243, 255, 0.4);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  color: var(--neon-cyan);
+  box-shadow: 0 0 5px rgba(0, 243, 255, 0.2);
+}
+
+.edit-btn:hover {
+  opacity: 1;
+  background: rgba(0, 243, 255, 0.2);
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.6), inset 0 0 5px rgba(0, 243, 255, 0.4);
+  border-color: var(--neon-cyan);
+}
+
+/* User Bubble Space for Button */
+.message-bubble.user {
+  padding-top: 35px;
+}

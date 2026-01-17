@@ -29,7 +29,7 @@ function MessageBubble({ message, voiceMode, onEdit, messageIndex }) {
             </div>
             <div className="message-content">
                 {message.content}
-                {message.image && (
+                {message.image && !message.video && (
                     <div className="message-image-container">
                         <img src={message.image} alt="Generated Content" className="message-image" />
                         <button
@@ -39,6 +39,22 @@ function MessageBubble({ message, voiceMode, onEdit, messageIndex }) {
                         >
                             ⬇️ Download
                         </button>
+                    </div>
+                )}
+                {message.video && (
+                    <div className="message-image-container">
+                        <video
+                            src={message.video}
+                            controls
+                            autoPlay
+                            loop
+                            muted
+                            className="message-image" // Reuse image styling for consistent look
+                            style={{ borderRadius: '8px', border: '1px solid #bd00ff' }}
+                        />
+                        <div style={{ fontSize: '0.8rem', opacity: 0.7, marginTop: '5px', textAlign: 'center' }}>
+                            Generated Video
+                        </div>
                     </div>
                 )}
             </div>

@@ -170,14 +170,28 @@ Role: Full Stack Developer building JARVIS.`;
     // --- 4. PARALLEL EXECUTION: IMAGE GEN & WEB SEARCH ---
     const tasks = [];
 
-    // Task 1: Image Generation
-    if (needsImageGen) {
-      console.log("Triggering Image Generation...");
-      tasks.push(
-        generateImage(optimizedQuery || message)
-          .then(res => ({ type: 'image', data: res }))
-          .catch(err => ({ type: 'image', error: err }))
-      );
+    // Task 1: Image Generation (& Optional Video)
+    if (needsImageGen || result.needsVideoGen) {
+      console.log(`Triggering ${result.needsVideoGen ? 'Video' : 'Image'} Generation...`);
+
+      const imageTask = generateImage(optimizedQuery || message)
+        .then(async (res) => {
+          if (!res.success) return { type: 'image', data: res };
+
+          // If Video is requested, chain execution: Image -> Video
+          if (result.needsVideoGen) {
+            const { generateVideoFromImage } = require('./utils/videoGenerator');
+            console.log("Image ready. Converting to Video (this may take 60s)...");
+            const videoRes = await generateVideoFromImage(res.image);
+            // We return both video and the original image source
+            return { type: 'video', data: videoRes, imageData: res.image };
+          }
+
+          return { type: 'image', data: res };
+        })
+        .catch(err => ({ type: 'image', error: err }));
+
+      tasks.push(imageTask);
     }
 
     // Task 2: Web Search
@@ -198,9 +212,23 @@ Role: Full Stack Developer building JARVIS.`;
       if (result.type === 'image') {
         if (result.data && result.data.success) {
           imageResult = result.data.image;
-          webContext += `\n[SYSTEM: An image was successfully generated. The image data is attached to the response.]`;
+          webContext += `\n[SYSTEM: An image was successfully generated.]`;
         } else {
           webContext += `\n[SYSTEM: Image generation failed.]`;
+        }
+      }
+
+      if (result.type === 'video') {
+        if (result.data && result.data.success) {
+          req.videoResult = result.data.video;
+          imageResult = result.imageData; // Also show the static image as preview/fallback
+          webContext += `\n[SYSTEM: A video was successfully generated based on the image.]`;
+        } else {
+          const err = result.data.error || "Unknown error";
+          webContext += `\n[SYSTEM: Video generation failed: ${err}. The static image was generated instead.]`;
+          if (result.imageData) {
+            imageResult = result.imageData;
+          }
         }
       }
 

@@ -40,7 +40,8 @@ body {
   background-color: var(--bg-dark);
   color: var(--text-primary);
   height: 100vh;
-  height: 100dvh; /* Dynamic viewport height for mobile browsers */
+  height: 100dvh;
+  /* Dynamic viewport height for mobile browsers */
   width: 100vw;
   overflow: hidden;
   font-size: 18px;
@@ -521,10 +522,13 @@ body {
 
 .thinking-bubble {
   display: flex;
+  flex-direction: row !important;
   align-items: center;
   gap: 6px;
   min-width: 80px;
   justify-content: center;
+  padding: 1.5rem 2rem !important;
+  /* Match standard bubble padding */
 }
 
 .dot {

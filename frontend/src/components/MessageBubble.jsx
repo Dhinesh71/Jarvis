@@ -1,8 +1,15 @@
 import { speakText } from "../utils/voice";
+import { detectLanguage } from "../utils/langDetect";
 import "./MessageBubble.css";
 
-function MessageBubble({ message }) {
+function MessageBubble({ message, voiceMode }) {
     const isAI = message.role === "assistant";
+
+    const handleSpeak = () => {
+        if (voiceMode === "off") return;
+        const lang = detectLanguage(message.content);
+        speakText(message.content, lang);
+    };
 
     return (
         <div className={`message-bubble ${message.role}`}>
@@ -16,7 +23,7 @@ function MessageBubble({ message }) {
             {isAI && (
                 <button
                     className="speak-btn"
-                    onClick={() => speakText(message.content)}
+                    onClick={handleSpeak}
                     title="Speak"
                 >
                     🔊

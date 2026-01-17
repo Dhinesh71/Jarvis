@@ -1,23 +1,63 @@
 let currentUtterance = null;
 
-export function speakText(text) {
-  if (!("speechSynthesis" in window)) {
-    alert("Text-to-Speech not supported in this browser.");
-    return;
+function getBestVoice(lang) {
+  const voices = window.speechSynthesis.getVoices();
+
+  // Tamil male preference
+  if (lang === "ta-IN") {
+    const tamilMale = voices.find(v =>
+      v.lang === "ta-IN" &&
+      /male|google|microsoft/i.test(v.name)
+    );
+    if (tamilMale) return tamilMale;
+
+    // Any Tamil voice fallback
+    const tamilAny = voices.find(v => v.lang === "ta-IN");
+    if (tamilAny) return tamilAny;
   }
 
-  // Stop any ongoing speech
+  // English male preference
+  const englishMale = voices.find(v =>
+    v.lang.startsWith("en") &&
+    /male|google|microsoft|alex|david/i.test(v.name)
+  );
+  if (englishMale) return englishMale;
+
+  // Absolute fallback
+  return voices.find(v => v.lang.startsWith("en")) || voices[0];
+}
+
+function preprocessText(text, lang) {
+  if (lang === "ta-IN") {
+    return text; // Tamil already flows well
+  }
+
+  // English pacing improvements
+  return text
+    .replace(/\. /g, ". ... ")
+    .replace(/\? /g, "? ... ")
+    .replace(/! /g, "! ... ");
+}
+
+export function speakText(text, lang = "en-IN") {
+  if (!("speechSynthesis" in window)) return;
+
   window.speechSynthesis.cancel();
 
-  currentUtterance = new SpeechSynthesisUtterance(text);
+  const utterance = new SpeechSynthesisUtterance(
+    preprocessText(text, lang)
+  );
 
-  // Voice tuning (Jarvis-style, neutral)
-  currentUtterance.rate = 0.95;
-  currentUtterance.pitch = 1.0;
-  currentUtterance.volume = 1.0;
-  currentUtterance.lang = "en-US";
+  utterance.voice = getBestVoice(lang);
+  utterance.lang = lang;
 
-  window.speechSynthesis.speak(currentUtterance);
+  // Male tuning
+  utterance.rate = lang === "ta-IN" ? 0.85 : 0.9;
+  utterance.pitch = 0.8;
+  utterance.volume = 1;
+
+  currentUtterance = utterance;
+  window.speechSynthesis.speak(utterance);
 }
 
 export function stopSpeech() {

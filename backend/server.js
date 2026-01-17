@@ -3,6 +3,21 @@ const cors = require('cors');
 const axios = require('axios');
 require('dotenv').config();
 const { searchWeb } = require('./utils/search');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+const { processUploadedFile } = require('./utils/fileProcessor');
+
+// Ensure uploads directory exists
+const uploadDir = 'uploads';
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+const upload = multer({
+  dest: uploadDir,
+  limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit
+});
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -92,9 +107,33 @@ async function analyzeIntent(userMessage, history) {
 
 // Chat Endpoint
 // Chat Endpoint
-app.post('/chat', async (req, res) => {
+// Chat Endpoint
+app.post('/chat', upload.array('files'), async (req, res) => {
   try {
-    const { message, history } = req.body;
+    let { message, history } = req.body;
+
+    // Handle FormData parsing for history (it comes as string)
+    if (typeof history === 'string') {
+      try {
+        history = JSON.parse(history);
+      } catch (e) {
+        history = [];
+      }
+    }
+
+    // --- FILE PROCESSING ---
+    let fileContext = "";
+    if (req.files && req.files.length > 0) {
+      console.log(`Received ${req.files.length} files.`);
+      const processedFiles = await Promise.all(req.files.map(file => processUploadedFile(file)));
+
+      fileContext = processedFiles.map(f =>
+        `FILE: ${f.filename} (${f.type})\nSUMMARY/ANALYSIS:\n${f.summary}`
+      ).join('\n\n');
+
+      // Append notification to message for LLM awareness
+      message += `\n\n[System Notification: User uploaded ${req.files.length} file(s). See FILE CONTEXT.]`;
+    }
 
     if (!message) {
       return res.status(400).json({ error: 'Message field is required' });
@@ -144,6 +183,9 @@ ${recentMessages}
 
 WEB SEARCH CONTEXT:
 ${webContext}
+
+FILE CONTEXT (UPLOADED FILES):
+${fileContext || "No files uploaded."}
 
 USER MESSAGE:
 ${message}

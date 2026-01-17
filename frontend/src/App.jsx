@@ -69,9 +69,9 @@ function App() {
     setEditMessage(messageContent);
   };
 
-  const handleSendMessage = async (message) => {
+  const handleSendMessage = async (message, files = []) => {
     // Special trigger for "jarvis"
-    if (message.trim().toLowerCase() === 'jarvis') {
+    if (message.trim().toLowerCase() === 'jarvis' && files.length === 0) {
       const newUserMsg = { role: 'user', content: message };
       const aiMsg = { role: 'assistant', content: 'At your service, sir.' };
       setHistory((prev) => [...prev, newUserMsg, aiMsg]);
@@ -86,7 +86,14 @@ function App() {
     }
 
     // Optimistic Update: Show user message immediately
-    const newUserMsg = { role: 'user', content: message };
+    // If files are attached, we can mention it in the UI or just show key details. 
+    // Ideally we should show a file bubble, but for now we append text indication.
+    let displayMessage = message;
+    if (files.length > 0) {
+      displayMessage += `\n[Attached: ${files.map(f => f.name).join(', ')}]`;
+    }
+
+    const newUserMsg = { role: 'user', content: displayMessage };
     setHistory((prev) => [...prev, newUserMsg]);
     setIsThinking(true);
 
@@ -99,15 +106,30 @@ function App() {
 
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/chat';
 
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      let body;
+      let headers = {};
+
+      if (files.length > 0) {
+        const formData = new FormData();
+        formData.append('message', message);
+        formData.append('history', JSON.stringify(historyToSend));
+        files.forEach(file => {
+          formData.append('files', file);
+        });
+        body = formData;
+        // Do NOT set Content-Type header for FormData, browser does it with boundary
+      } else {
+        body = JSON.stringify({
           message: message,
           history: historyToSend,
-        }),
+        });
+        headers['Content-Type'] = 'application/json';
+      }
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: headers,
+        body: body,
       });
 
       if (!response.ok) {
